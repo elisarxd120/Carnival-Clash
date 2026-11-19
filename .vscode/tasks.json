@@ -1,0 +1,34 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Convert predictive play document to Markdown",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"const fs=require('fs'), zlib=require('zlib'); const p='C:\\\\Users\\\\Elisar\\\\Documents\\\\Carnival Clash\\\\docu\\\\Carnival Clash Predictive Play of Rock, Paper, Scissors with ESP32.docx'; const b=fs.readFileSync(p); let e=-1; for(let i=b.length-22;i>=Math.max(0,b.length-65558);i--){if(b.readUInt32LE(i)===0x06054b50){e=i;break}} if(e<0) throw Error('ZIP directory not found'); const n=b.readUInt16LE(e+10), off=b.readUInt32LE(e+16); let pos=off, xml=null; for(let i=0;i<n;i++){if(b.readUInt32LE(pos)!==0x02014b50) throw Error('Invalid ZIP entry'); const method=b.readUInt16LE(pos+10), size=b.readUInt32LE(pos+20), nl=b.readUInt16LE(pos+28), el=b.readUInt16LE(pos+30), cl=b.readUInt16LE(pos+32), lo=b.readUInt32LE(pos+42), name=b.toString('utf8',pos+46,pos+46+nl); if(name==='word/document.xml'){const start=lo+30+b.readUInt16LE(lo+26)+b.readUInt16LE(lo+28), raw=b.subarray(start,start+size); xml=(method===8?zlib.inflateRawSync(raw):raw).toString('utf8'); break} pos+=46+nl+el+cl} if(!xml) throw Error('word/document.xml not found'); const dec=s=>s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'\"').replace(/&apos;/g,\"'\").replace(/&#(x[0-9a-f]+|[0-9]+);/gi,(_,v)=>String.fromCodePoint(v[0].toLowerCase()==='x'?parseInt(v.slice(1),16):parseInt(v,10))); const paras=[...xml.matchAll(/<w:p(?:\\s[^>]*)?>[\\s\\S]*?<\\/w:p>/g)].map(m=>{const s=m[0], sty=(s.match(/<w:pStyle\\b[^>]*w:val=\"([^\"]+)\"/)||[])[1]||''; let t=''; for(const x of s.matchAll(/<w:t\\b[^>]*>([\\s\\S]*?)<\\/w:t>|<w:tab\\b[^>]*\\/>|<w:(?:br|cr)\\b[^>]*\\/>/g)) t+=x[1]!==undefined?dec(x[1]):(x[0].includes('tab')?'\\t':' '); return {sty,text:t.trim()}}).filter(x=>x.text); const md=paras.map(({sty,text})=>{const h=sty.match(/^Heading([1-6])$/i)||sty.match(/^Title$/i); if(h) return (sty.toLowerCase()==='title'?'#':'#'.repeat(Number(h[1])+1))+' '+text; return text}).join('\\n\\n')+'\\n'; const out=p.replace(/\\.docx$/i,'.md'); fs.writeFileSync(out,md,'utf8'); console.log('Created '+out+' ('+paras.length+' paragraphs, '+Buffer.byteLength(md)+' bytes)');"
+			]
+		},
+		{
+			"label": "Test Carnival Clash game rules",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"test"
+			],
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Install Carnival Clash dependencies",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

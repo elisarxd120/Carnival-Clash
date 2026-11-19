@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#16122b" />
+    <title>Carnival Clash</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/game.js" defer></script>
+  </head>
+  <body>
+    <main class="booth">
+      <header class="masthead">
+        <p class="eyebrow">Step right up</p>
+        <h1>Carnival <span>Clash</span></h1>
+        <p class="subtitle">Can you outsmart Madam Glitch?</p>
+        <p id="connection-status" class="connection" role="status">
+          Connecting to the booth...
+        </p>
+      </header>
+
+      <section id="start-panel" class="panel start-panel">
+        <div class="start-content">
+          <p class="eyebrow">Beat the boss machine</p>
+          <h2>Madam Glitch has never lost.</h2>
+          <p>
+            You have five rounds and one Hack Chip. Make your moves count and
+            earn a place on the Hall of Fame.
+          </p>
+          <form id="start-form">
+            <label for="player-name">Your nickname</label>
+            <div class="start-controls">
+              <input
+                id="player-name"
+                name="playerName"
+                maxlength="16"
+                autocomplete="nickname"
+                required
+              />
+              <button class="button button-primary" type="submit">
+                Challenge Madam
+              </button>
+            </div>
+          </form>
+        </div>
+        <aside class="panel leaderboard start-leaderboard">
+          <p class="eyebrow">Hall of Fame</p>
+          <h2>Top 10 players</h2>
+          <ol class="leaderboard-list">
+            <li class="empty-leaderboard">Loading leaderboard...</li>
+          </ol>
+        </aside>
+      </section>
+
+      <section id="game-panel" class="game-layout" hidden>
+        <div class="panel arena">
+          <section class="madam-stage" aria-label="Madam Glitch">
+            <div id="madam-face" class="face-frame" data-face-state="idle">
+              <img
+                id="madam-face-image"
+                src="/assets/madam.png"
+                alt="Madam Glitch"
+              />
+            </div>
+            <p id="game-message" class="game-message" aria-live="polite">
+              Madam Glitch is waiting...
+            </p>
+            <div id="madam-pick" class="madam-pick" aria-live="polite">?</div>
+            <p id="pick-comparison" class="pick-comparison" hidden></p>
+          </section>
+
+          <section class="player-area" aria-label="Player controls and score">
+            <div class="player-heading">
+              <div>
+                <p class="eyebrow" id="player-label">Player</p>
+                <h2 id="phase-title">Your turn</h2>
+              </div>
+              <span id="event-badge" class="event-badge" hidden></span>
+            </div>
+
+            <div
+              id="move-controls"
+              class="move-controls"
+              aria-label="Choose a move"
+            >
+              <button class="move-button" type="button" data-move="rock">
+                <span aria-hidden="true">✊</span>Rock
+              </button>
+              <button class="move-button" type="button" data-move="paper">
+                <span aria-hidden="true">✋</span>Paper
+              </button>
+              <button class="move-button" type="button" data-move="scissors">
+                <span aria-hidden="true">✌</span>Scissors
+              </button>
+            </div>
+
+            <div class="timer-wrap">
+              <div class="timer-caption">
+                <span>Move timer</span><strong id="timer">10</strong>
+              </div>
+              <div class="timer-track">
+                <div id="timer-bar" class="timer-bar"></div>
+              </div>
+            </div>
+
+            <div class="score-row" aria-label="Match score">
+              <div><strong id="points">0</strong><span>points</span></div>
+              <div><strong id="wins">0</strong><span>wins</span></div>
+              <div><strong id="ties">0</strong><span>ties</span></div>
+              <div><strong id="losses">0</strong><span>losses</span></div>
+              <div>
+                <strong id="round-number">1</strong>
+                <span>round of 5</span>
+              </div>
+            </div>
+
+            <button id="hack-button" class="button button-hack" type="button">
+              Use Hack Chip <span>1 per match</span>
+            </button>
+          </section>
+
+          <div
+            id="round-result"
+            class="round-result"
+            aria-live="polite"
+            hidden
+          ></div>
+          <p
+            id="persistence-error"
+            class="error-message"
+            role="alert"
+            hidden
+          ></p>
+        </div>
+
+        <aside class="panel leaderboard">
+          <p class="eyebrow">Hall of Fame</p>
+          <h2>Top 10 players</h2>
+          <ol class="leaderboard-list">
+            <li class="empty-leaderboard">No matches yet. Be the first!</li>
+          </ol>
+          <button
+            id="play-again"
+            class="button button-primary"
+            type="button"
+            hidden
+          >
+            Play again
+          </button>
+        </aside>
+      </section>
+    </main>
+    <dialog
+      id="result-dialog"
+      class="result-dialog"
+      aria-labelledby="result-title"
+    >
+      <div class="result-dialog-content">
+        <p id="result-icon" class="result-icon" aria-hidden="true"></p>
+        <p id="result-eyebrow" class="eyebrow">Round result</p>
+        <div id="result-picks" class="result-picks" aria-label="Round picks">
+          <div class="result-pick">
+            <span>You Pick</span>
+            <strong id="result-player-pick"></strong>
+          </div>
+          <div class="result-pick">
+            <span>Madam Pick</span>
+            <strong id="result-madam-pick"></strong>
+          </div>
+        </div>
+        <h2 id="result-title"></h2>
+        <p id="result-message" class="result-message"></p>
+        <p id="result-points" class="result-points"></p>
+        <button
+          id="continue-button"
+          class="button button-primary continue-button"
+          type="button"
+          hidden
+        >
+          Press any button to continue
+        </button>
+        <div id="final-summary" class="final-summary" hidden>
+          <div><strong id="final-points">0</strong><span>points</span></div>
+          <div><strong id="final-wins">0</strong><span>wins</span></div>
+          <div><strong id="final-ties">0</strong><span>ties</span></div>
+          <div><strong id="final-losses">0</strong><span>losses</span></div>
+        </div>
+        <button
+          id="dialog-play-again"
+          class="button button-primary"
+          type="button"
+          hidden
+        >
+          Play again
+        </button>
+      </div>
+    </dialog>
+  </body>
+</html>
