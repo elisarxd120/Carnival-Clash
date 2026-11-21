@@ -142,6 +142,8 @@ function connect() {
             ? "Madam Glitch wins this round."
             : "It's a tie!";
       playOutcomeSound(message.result);
+    } else if (message.type === "leaderboard-updated") {
+      refreshLeaderboard();
     }
   });
 }
@@ -217,7 +219,7 @@ function updatePickControls(state) {
     );
     button.setAttribute("aria-pressed", String(selected));
   });
-  hackButton.disabled = !canPick || state.hackUsed;
+  hackButton.disabled = !canPick || state.hackUsed || !state.hackEnabled;
   hackButton.classList.toggle("is-selected", selectedMove === "hack");
 }
 
@@ -441,6 +443,8 @@ function renderState(state, previousState) {
   playAgainButton.hidden = state.phase !== "complete";
   document.querySelector("#player-label").textContent =
     state.playerName || "Player";
+  document.querySelector("#start-description").textContent =
+    `You have ${state.totalRounds ?? 5} rounds and ${state.hackEnabled ? "one Hack Chip" : "no Hack Chip"}. Make your moves count and earn a place on the Hall of Fame.`;
   phaseTitle.textContent =
     state.phase === "complete"
       ? "Match complete"
@@ -454,6 +458,7 @@ function renderState(state, previousState) {
   const displayedRound =
     state.phase === "round-result" ? state.roundsPlayed : state.currentRound;
   roundNumber.textContent = displayedRound > 0 ? String(displayedRound) : "-";
+  roundNumber.nextElementSibling.textContent = `round of ${state.totalRounds ?? 5}`;
   setEvent(state.event ?? state.lastRound?.event);
   document.querySelector("#points").textContent = state.score.points;
   document.querySelector("#wins").textContent = state.score.wins;
@@ -521,15 +526,16 @@ function updateTimer() {
     currentState.phase !== "awaiting-move" ||
     !currentState.deadline
   ) {
-    timer.textContent = String(MOVE_TIMEOUT_MS / 1000);
+    timer.textContent = String((currentState?.moveTimeoutMs ?? MOVE_TIMEOUT_MS) / 1000);
     timerBar.style.transform = "scaleX(1)";
     return;
   }
 
   const remainingMs = Math.max(0, currentState.deadline - Date.now());
   const remainingSeconds = Math.ceil(remainingMs / 1000);
+  const timeoutMs = currentState.moveTimeoutMs ?? MOVE_TIMEOUT_MS;
   timer.textContent = String(remainingSeconds);
-  timerBar.style.transform = `scaleX(${remainingMs / MOVE_TIMEOUT_MS})`;
+  timerBar.style.transform = `scaleX(${remainingMs / timeoutMs})`;
 }
 
 async function refreshLeaderboard() {

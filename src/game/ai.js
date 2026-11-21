@@ -16,7 +16,10 @@ function randomIndex(random) {
   return Math.floor(value * MOVES.length);
 }
 
-function predictMove(history) {
+export function predictPlayerMove(history) {
+  if (!Array.isArray(history)) {
+    throw new TypeError("history must be an array of moves.");
+  }
   const recentMoves = history.slice(-HISTORY_LIMIT);
   const counts = new Map(MOVES.map((move) => [move, 0]));
 
@@ -38,20 +41,27 @@ function predictMove(history) {
   return null;
 }
 
-export function chooseMadamMove(history, random = Math.random) {
+export function chooseMadamMove(
+  history,
+  random = Math.random,
+  predictionChance = PREDICTION_CHANCE,
+) {
   if (!Array.isArray(history)) {
     throw new TypeError("history must be an array of moves.");
   }
   if (typeof random !== "function") {
     throw new TypeError("random must be a function.");
   }
+  if (!Number.isFinite(predictionChance) || predictionChance < 0 || predictionChance > 1) {
+    throw new RangeError("predictionChance must be between 0 and 1.");
+  }
 
-  const prediction = predictMove(history);
+  const prediction = predictPlayerMove(history);
   if (prediction === null) {
     return MOVES[randomIndex(random)];
   }
 
-  if (random() < PREDICTION_CHANCE) {
+  if (random() < predictionChance) {
     return COUNTERS[prediction];
   }
 

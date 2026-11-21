@@ -43,6 +43,7 @@ test("uses player history to choose Madam Glitch's move", () => {
 
   match = playPlayerMove(match, "rock", { random: () => 0.4 });
   assert.equal(match.history[1].madamMove, "paper");
+  assert.equal(match.history[1].predictedMove, "rock");
   assert.equal(match.history[1].outcome, "madam-glitch");
 });
 
@@ -105,5 +106,26 @@ test("does not accept moves after the match is complete", () => {
   assert.throws(() => submitMove(match, "rock", "rock"), {
     name: "Error",
     message: "The match is not active.",
+  });
+});
+
+test("supports configured round counts, disabled mechanics, and AI ratios", () => {
+  let match = createMatch("JON", {
+    rounds: 2,
+    glitchMode: false,
+    randomEvents: false,
+    eventFrequencyPct: 0,
+    predictionPct: 0,
+    hackEnabled: false,
+    random: () => 0.5,
+  });
+  match = submitMove(match, "rock", "rock");
+  match = submitMove(match, "rock", "rock");
+
+  assert.equal(match.status, "completed");
+  assert.equal(match.history.length, 2);
+  assert.deepEqual(match.history.map((round) => round.event), [null, null]);
+  assert.throws(() => useHack(createMatch("JON", { hackEnabled: false })), {
+    message: "The Hack Chip is disabled for this match.",
   });
 });

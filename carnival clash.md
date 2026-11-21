@@ -6,9 +6,9 @@ Carnival Clash is a physical Rock–Paper–Scissors booth. Four buttons connect
 
 ### Current project status
 
-The laptop game is implemented: browser interface, five-round game flow, adaptive AI, Glitch Mode, Double Stakes, Hack Chip, WebSocket server, SQLite match/history storage, and a Top 10 leaderboard. Automated tests cover the game and server. The game can be run locally as described in Step 5.
+The laptop game is implemented: browser interface, five-round game flow, adaptive AI, Glitch Mode, Double Stakes, Hack Chip, WebSocket server, SQLite match/history storage, and a Top 10 leaderboard. A separate password-protected `/admin` dashboard provides live operations, game history, round analytics, leaderboard moderation, system logs, CSV export, and database backups.
 
-The ESP32 firmware and physical wiring are the next build stage. Recent-player feeds, statistics cards, QR ranking, and USB serial backup are not implemented yet.
+The ESP32 firmware and physical wiring are the next build stage. The admin dashboard reports the device as offline until an ESP32 WebSocket client identifies itself. Recent-player feeds, QR ranking, and USB serial backup are not implemented yet.
 
 ## 1. Understand the Game
 
@@ -101,6 +101,25 @@ Keep game rules separate from the web-server and display code. This makes it pos
 ### Run the current laptop game
 
 From the project folder, run `npm install` once, then `npm start`. Open `http://localhost:3000` in a browser to play. Press `Ctrl+C` in the terminal to stop the server. Match results and player move history are stored in `data/carnival-clash.sqlite`.
+
+### Open the admin dashboard
+
+Open `http://localhost:3000/admin`. The dashboard is separate from the public game and leaderboard. A local `.env` file is loaded at startup if present and is excluded from Git. Set `ADMIN_PASSWORD` there for local use; the server hashes it with scrypt at startup. For deployment, prefer a salted `ADMIN_PASSWORD_HASH` environment variable. There is no password default in tracked source.
+
+For a deployment hash, generate one in PowerShell:
+
+```powershell
+$env:ADMIN_PASSWORD = "choose-a-strong-password"
+$env:ADMIN_PASSWORD_HASH = node --input-type=module -e "import { randomBytes, scryptSync } from 'node:crypto'; const password = process.env.ADMIN_PASSWORD; const salt = randomBytes(16).toString('hex'); console.log(salt + ':' + scryptSync(password, salt, 64).toString('hex'))"
+Remove-Item Env:ADMIN_PASSWORD
+npm start
+```
+
+Set `ADMIN_PASSWORD_HASH` in the server's environment for future runs. The dashboard session uses an HttpOnly, SameSite cookie and expires after 30 minutes of inactivity. Keep the hash and password out of source control.
+
+Completed matches and their round-by-round data are saved together. The schema is migrated automatically when the server starts. The public leaderboard remains on the start screen and is hidden during a match so players can focus on Madam Glitch and their move. Admins can hide, rename, flag, or delete individual scores, reset leaderboard and player history, review history and analytics, export all games to CSV, and create a timestamped SQLite backup under `data/`. The settings panel persists the predictive/random AI ratio, move timer, round count, Glitch Mode, event enablement and frequency, Hack Chip, and maintenance pause. Match-rule changes apply to the next game; move-timer changes take effect at the next round.
+
+An ESP32 WebSocket client should send `{"type":"device-connect"}` after connecting. It can then send the same `move` and `hack` messages as the game client. Admin test effects are broadcast as `feedback` messages with `result`, `led`, and `sound` fields.
 
 ## 6. Implement the Core Game Rules
 

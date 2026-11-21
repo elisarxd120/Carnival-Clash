@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
+import { scryptSync } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { Script } from "node:vm";
 import WebSocket from "ws";
 import { createGameServer } from "../src/server.js";
 import {
   createDatabase,
+  getGameSettings,
   getPlayerMoveHistory,
 } from "../src/storage/database.js";
 
@@ -50,6 +54,13 @@ function createMessageReader(socket) {
     },
   };
 }
+
+test("browser game and admin scripts are valid JavaScript", async () => {
+  for (const filename of ["game.js", "admin.js"]) {
+    const source = await readFile(new URL(`../public/${filename}`, import.meta.url), "utf8");
+    assert.doesNotThrow(() => new Script(source, { filename }));
+  }
+});
 
 async function openTestSocket(server, context) {
   const address = await server.listen(0, "127.0.0.1");
@@ -99,7 +110,11 @@ test("plays a five-round match and persists the leaderboard result", async (cont
 
   const pageResponse = await fetch(`http://127.0.0.1:${address.port}/`);
   assert.equal(pageResponse.status, 200);
-  assert.match(await pageResponse.text(), /Carnival Clash/);
+  const publicPage = await pageResponse.text();
+  assert.match(publicPage, /Carnival Clash/);
+  assert.match(publicPage, /start-leaderboard/);
+  const inGamePage = publicPage.split('id="game-panel"')[1];
+  assert.doesNotMatch(inGamePage, /class="panel leaderboard"/);
 
   const madamImageResponse = await fetch(
     `http://127.0.0.1:${address.port}/assets/madam.png`,
@@ -221,4 +236,90 @@ test("a move pressed during the result continues without playing that move", asy
   );
 
   assert.equal(result.state.roundsPlayed, 1);
+});
+
+test("admin data requires a hashed-password login and is available after sign-in", async (context) => {
+  const database = createDatabase(":memory:");
+  context.after(() => database.close());
+  const salt = "0123456789abcdef0123456789abcdef";
+  const passwordHash = `${salt}:${scryptSync("team-secret", salt, 64).toString("hex")}`;
+  const server = createGameServer({ database, adminPasswordHash: passwordHash });
+  const address = await server.listen(0, "127.0.0.1");
+  context.after(async () => server.close());
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+
+  const adminPage = await fetch(`${baseUrl}/admin`);
+  assert.equal(adminPage.status, 200);
+  assert.match(await adminPage.text(), /Admin sign in/);
+  assert.equal((await fetch(`${baseUrl}/admin.css`)).status, 200);
+  assert.equal((await fetch(`${baseUrl}/admin.js`)).status, 200);
+  const denied = await fetch(`${baseUrl}/api/admin/overview`);
+  assert.equal(denied.status, 401);
+
+  const failedLogin = await fetch(`${baseUrl}/api/admin/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ password: "wrong" }),
+  });
+  assert.equal(failedLogin.status, 401);
+
+  const login = await fetch(`${baseUrl}/api/admin/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ password: "team-secret" }),
+  });
+  assert.equal(login.status, 200);
+  const cookie = login.headers.get("set-cookie").split(";")[0];
+  const overview = await fetch(`${baseUrl}/api/admin/overview`, {
+    headers: { cookie },
+  });
+  assert.equal(overview.status, 200);
+  assert.equal((await overview.json()).device.status, "offline");
+
+  const updatedSettings = await fetch(`${baseUrl}/api/admin/settings`, {
+    method: "PUT",
+    headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({
+      predictionPct: 60,
+      moveTimerSec: 12,
+      rounds: 3,
+      glitchMode: false,
+      randomEvents: false,
+      hackEnabled: false,
+      eventFrequencyPct: 25,
+    }),
+  });
+  assert.equal(updatedSettings.status, 200);
+  assert.equal((await updatedSettings.json()).rounds, 3);
+  assert.equal(getGameSettings(database).moveTimerSec, 12);
+
+  const invalidSettings = await fetch(`${baseUrl}/api/admin/settings`, {
+    method: "PUT",
+    headers: { cookie, "content-type": "application/json" },
+    body: JSON.stringify({ rounds: 6 }),
+  });
+  assert.equal(invalidSettings.status, 400);
+
+  const device = new WebSocket(`ws://127.0.0.1:${address.port}`);
+  const deviceReader = createMessageReader(device);
+  await new Promise((resolve, reject) => {
+    device.once("open", resolve);
+    device.once("error", reject);
+  });
+  device.send(JSON.stringify({ type: "device-connect" }));
+  await deviceReader.waitFor((message) => message.type === "device-status");
+  device.send(JSON.stringify({ type: "move", move: "rock" }));
+  await deviceReader.waitFor((message) => message.type === "error");
+  const onlineStatus = await fetch(`${baseUrl}/api/admin/overview`, {
+    headers: { cookie },
+  });
+  const deviceState = (await onlineStatus.json()).device;
+  assert.equal(deviceState.status, "online");
+  assert.equal(deviceState.lastButton, "rock");
+  device.close();
+  await new Promise((resolve) => device.once("close", resolve));
+  const offlineStatus = await fetch(`${baseUrl}/api/admin/overview`, {
+    headers: { cookie },
+  });
+  assert.equal((await offlineStatus.json()).device.status, "offline");
 });

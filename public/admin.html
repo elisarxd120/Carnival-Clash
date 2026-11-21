@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#16122b" />
+    <title>Admin Dashboard | Carnival Clash</title>
+    <link rel="stylesheet" href="/admin.css" />
+    <script src="/admin.js" defer></script>
+  </head>
+  <body>
+    <header class="admin-header">
+      <a class="brand" href="/">Carnival <span>Clash</span></a>
+      <div class="header-actions">
+        <a href="/">Public leaderboard</a>
+        <button id="logout-button" class="button button-muted" type="button" hidden>
+          Log out
+        </button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <section id="login-panel" class="panel login-panel" hidden>
+        <p class="eyebrow">Team access</p>
+        <h1>Admin sign in</h1>
+        <p>Sign in to monitor and manage the carnival game.</p>
+        <form id="login-form">
+          <label for="admin-password">Admin password</label>
+          <input id="admin-password" type="password" autocomplete="current-password" required />
+          <button class="button button-primary" type="submit">Sign in</button>
+        </form>
+        <p id="login-error" class="notice" role="alert" hidden></p>
+      </section>
+
+      <section id="dashboard" hidden>
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Carnival operations</p>
+            <h1>Admin dashboard</h1>
+          </div>
+          <span id="refresh-status" class="muted">Live updates every 3 seconds</span>
+        </div>
+
+        <section class="overview-grid" aria-label="Overview">
+          <article class="panel metric"><span>Games today</span><strong id="games-today">0</strong><small>All time: <b id="games-all">0</b></small></article>
+          <article class="panel metric"><span>Unique players</span><strong id="unique-players">0</strong><small>Distinct nicknames</small></article>
+          <article class="panel metric"><span>Player win rate</span><strong id="player-win-rate">0%</strong><small>Madam Glitch: <b id="machine-win-rate">100%</b></small></article>
+          <article class="panel metric"><span>Average score</span><strong id="average-score">0</strong><small>Average duration: <b id="average-duration">0 sec</b></small></article>
+          <article class="panel metric"><span>Highest score today</span><strong id="highest-score">—</strong><small id="highest-player">No scores today</small></article>
+          <article class="panel metric"><span>ESP32 status</span><strong id="device-overview" class="status-value">Offline</strong><small>Server uptime: <b id="server-uptime">0 sec</b></small></article>
+        </section>
+
+        <section class="panel section-card">
+          <div class="section-heading"><div><p class="eyebrow">Live monitor</p><h2>Current game</h2></div><span id="live-status" class="status-pill">Idle</span></div>
+          <div class="live-grid">
+            <div><span>Player</span><strong id="live-player">—</strong></div>
+            <div><span>Round</span><strong id="live-round">— / 5</strong></div>
+            <div><span>Score</span><strong id="live-score">0</strong></div>
+            <div><span>Mode</span><strong id="live-mode">Normal</strong></div>
+            <div><span>Hack Chip</span><strong id="live-hack">Not used</strong></div>
+          </div>
+          <p id="last-move" class="last-move">No moves played yet.</p>
+        </section>
+
+        <section class="panel section-card">
+          <div class="section-heading"><div><p class="eyebrow">Device health</p><h2>ESP32 status</h2></div><span id="device-status" class="status-pill status-offline">Offline</span></div>
+          <div class="device-grid">
+            <p>Last button press <strong id="last-button">None recorded</strong></p>
+            <p>Last connection <strong id="last-connected">Never connected</strong></p>
+            <p>Reconnects <strong id="reconnect-count">0</strong></p>
+          </div>
+          <div class="button-test">
+            <span>Physical button test</span>
+            <div class="button-lights" aria-label="Last physical button pressed">
+              <i data-button="rock">Rock</i><i data-button="paper">Paper</i>
+              <i data-button="scissors">Scissors</i><i data-button="hack">Hack</i>
+            </div>
+          </div>
+          <div class="test-effects">
+            <span>Send test effect</span>
+            <div class="button-row">
+              <button class="button button-small" data-effect="win">Win</button>
+              <button class="button button-small" data-effect="lose">Lose</button>
+              <button class="button button-small" data-effect="glitch">Glitch</button>
+              <button class="button button-small" data-effect="chaos">Chaos</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel section-card">
+          <div class="section-heading"><div><p class="eyebrow">Player rankings</p><h2>Leaderboard management</h2></div>
+            <button id="reset-leaderboard" class="button button-danger" type="button">Reset leaderboard</button>
+          </div>
+          <div class="toolbar">
+            <input id="leaderboard-search" type="search" placeholder="Search nicknames" aria-label="Search leaderboard" />
+            <select id="leaderboard-period" aria-label="Leaderboard period"><option value="all">All time</option><option value="today">Today</option></select>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Rank</th><th>Nickname</th><th>Score</th><th>W / L / T</th><th>Played</th><th>Actions</th></tr></thead><tbody id="leaderboard-body"></tbody></table></div>
+        </section>
+
+        <section class="panel section-card">
+          <div class="section-heading"><div><p class="eyebrow">Match records</p><h2>Game history</h2></div><a class="button button-muted" href="/api/admin/export.csv">Export games CSV</a></div>
+          <div class="toolbar">
+            <input id="history-search" type="search" placeholder="Search nicknames" aria-label="Search game history" />
+            <label class="inline-label">Sort
+              <select id="history-sort"><option value="created_at">Date</option><option value="player_name">Nickname</option><option value="points">Score</option><option value="duration_sec">Duration</option></select>
+            </label>
+            <select id="history-direction" aria-label="Sort direction"><option value="desc">Descending</option><option value="asc">Ascending</option></select>
+          </div>
+          <div class="table-wrap"><table><thead><tr><th>Date / time</th><th>Nickname</th><th>Score</th><th>W / L / T</th><th>Hacks</th><th>Duration</th><th>Rounds</th></tr></thead><tbody id="history-body"></tbody></table></div>
+          <div class="pagination"><button id="history-prev" class="button button-muted">Previous</button><span id="history-page">Page 1</span><button id="history-next" class="button button-muted">Next</button></div>
+          <div id="round-details" class="round-details" hidden></div>
+        </section>
+
+        <section class="panel section-card">
+          <div class="section-heading"><div><p class="eyebrow">Project defense</p><h2>Game analytics</h2></div></div>
+          <div class="analytics-grid">
+            <div><h3>Player move distribution</h3><div id="move-analytics" class="bar-list"></div></div>
+            <div><h3>AI prediction accuracy</h3><p id="ai-accuracy">No prediction data yet.</p></div>
+            <div><h3>Win rate by round</h3><div id="round-analytics" class="bar-list"></div></div>
+            <div><h3>Event stats</h3><div id="event-analytics" class="bar-list"></div></div>
+            <div><h3>Hack usage</h3><p id="hack-analytics">No hack data yet.</p></div>
+            <div class="wide"><h3>Games per hour today</h3><div id="hourly-analytics" class="hourly-bars"></div></div>
+          </div>
+        </section>
+
+        <section class="panel section-card">
+          <div class="section-heading"><div><p class="eyebrow">Game controls</p><h2>Game settings</h2></div></div>
+          <form id="settings-form" class="settings-grid">
+            <label>Predictive AI ratio <span><input id="setting-prediction" type="number" min="0" max="100" required />% predictive · remainder random</span></label>
+            <label>Move timer <span><input id="setting-timer" type="number" min="3" max="60" required />seconds</span></label>
+            <label>Rounds per game <span><input id="setting-rounds" type="number" min="1" max="5" required /></span></label>
+            <label>Random event frequency <span><input id="setting-frequency" type="number" min="0" max="100" required />%</span></label>
+            <label class="toggle-control"><input id="setting-glitch" type="checkbox" /> Glitch Mode</label>
+            <label class="toggle-control"><input id="setting-events" type="checkbox" /> Random events</label>
+            <label class="toggle-control"><input id="setting-hack" type="checkbox" /> Hack Chip</label>
+            <label class="toggle-control"><input id="maintenance-toggle" type="checkbox" /> Pause new games</label>
+            <div class="settings-actions"><button class="button button-primary" type="submit">Save settings</button><span class="muted">Changes to game rules apply to the next match; timer changes apply to the next round.</span></div>
+          </form>
+        </section>
+
+        <section class="panel section-card">
+          <div class="section-heading"><div><p class="eyebrow">Diagnostics</p><h2>System log</h2></div><button id="backup-button" class="button button-muted">Back up database</button></div>
+          <ol id="system-log" class="system-log"></ol>
+        </section>
+
+        <p id="dashboard-message" class="notice" role="status" hidden></p>
+      </section>
+    </main>
+  </body>
+</html>
